@@ -1,0 +1,88 @@
+<%- include('layout', { title: 'Register' }) %>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="mb-0">Create Account</h3>
+            </div>
+            <div class="card-body">
+                <form id="registerForm" method="POST">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Full Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email address</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" required minlength="6">
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirmPassword" class="form-label">Confirm Password</label>
+                        <input type="password" class="form-control" id="confirmPassword" required minlength="6">
+                    </div>
+                    <div class="mb-3">
+                        <label for="organization" class="form-label">Organization</label>
+                        <select class="form-select" id="organization" name="organizationId" required>
+                            <option value="">Select an organization</option>
+                            <% organizations.forEach(org => { %>
+                                <option value="<%= org._id %>"><%= org.name %></option>
+                            <% }) %>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Register</button>
+                </form>
+                <div class="text-center mt-3">
+                    <a href="/login">Already have an account? Login here</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    if (password !== confirmPassword) {
+        document.getElementById('errorMessage').textContent = 'Passwords do not match';
+        document.getElementById('errorAlert').classList.remove('d-none');
+        return;
+    }
+    
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData);
+    
+    try {
+        const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            document.getElementById('successMessage').textContent = 'Registration successful! Redirecting...';
+            document.getElementById('successAlert').classList.remove('d-none');
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 2000);
+        } else {
+            document.getElementById('errorMessage').textContent = result.message || 'Registration failed';
+            document.getElementById('errorAlert').classList.remove('d-none');
+        }
+    } catch (error) {
+        document.getElementById('errorMessage').textContent = 'An error occurred. Please try again.';
+        document.getElementById('errorAlert').classList.remove('d-none');
+    }
+});
+</script>

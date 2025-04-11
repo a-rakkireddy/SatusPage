@@ -1,0 +1,139 @@
+<%- include('layout', { title: 'Dashboard' }) %>
+
+<div class="row">
+    <!-- Status Overview -->
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Status Overview</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="status-card status-operational">
+                            <div class="card-body">
+                                <h6 class="card-title">Operational</h6>
+                                <p class="card-text"><%= stats.operational %></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="status-card status-degraded_performance">
+                            <div class="card-body">
+                                <h6 class="card-title">Degraded</h6>
+                                <p class="card-text"><%= stats.degraded %></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="status-card status-partial_outage">
+                            <div class="card-body">
+                                <h6 class="card-title">Partial Outage</h6>
+                                <p class="card-text"><%= stats.partial %></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="status-card status-major_outage">
+                            <div class="card-body">
+                                <h6 class="card-title">Major Outage</h6>
+                                <p class="card-text"><%= stats.major %></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Incidents -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Recent Incidents</h5>
+            </div>
+            <div class="card-body">
+                <div class="incident-list">
+                    <% incidents.forEach(incident => { %>
+                        <div class="incident-item mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1"><%= incident.title %></h6>
+                                    <small class="text-muted">
+                                        <%= incident.type === 'maintenance' ? 'Scheduled Maintenance' : 'Incident' %> • 
+                                        <%= incident.createdAt.toLocaleString() %>
+                                    </small>
+                                </div>
+                                <div class="badge bg-secondary">
+                                    <%= incident.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) %>
+                                </div>
+                            </div>
+                        </div>
+                    <% }) %>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Services Status -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Services Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="service-list">
+                    <% services.forEach(service => { %>
+                        <div class="service-item mb-3">
+                            <div class="status-card status-<%= service.status %>">
+                                <div class="card-body">
+                                    <h6 class="mb-1"><%= service.name %></h6>
+                                    <small class="text-muted">
+                                        <%= service.description || 'No description' %>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    <% }) %>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Real-time updates
+const socket = io();
+
+socket.on('statusUpdate', (data) => {
+    // Update service status
+    const serviceItem = document.querySelector(`.service-item[data-service-id="${data.serviceId}"]`);
+    if (serviceItem) {
+        const statusCard = serviceItem.querySelector('.status-card');
+        statusCard.classList.remove('status-operational', 'status-degraded_performance', 'status-partial_outage', 'status-major_outage');
+        statusCard.classList.add(`status-${data.status}`);
+    }
+});
+
+socket.on('incidentUpdate', (data) => {
+    // Update incident list
+    const incidentList = document.querySelector('.incident-list');
+    const newIncident = document.createElement('div');
+    newIncident.className = 'incident-item mb-3';
+    newIncident.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h6 class="mb-1">${data.title}</h6>
+                <small class="text-muted">
+                    ${data.type === 'maintenance' ? 'Scheduled Maintenance' : 'Incident'} • 
+                    ${new Date(data.createdAt).toLocaleString()}
+                </small>
+            </div>
+            <div class="badge bg-secondary">
+                ${data.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+            </div>
+        </div>
+    `;
+    incidentList.insertBefore(newIncident, incidentList.firstChild);
+});
+</script>

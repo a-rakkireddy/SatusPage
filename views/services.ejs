@@ -1,0 +1,177 @@
+<%- include('layout', { title: 'Services' }) %>
+
+<!-- Add Service Modal -->
+<div class="modal fade" id="addServiceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Service</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addServiceForm">
+                    <div class="mb-3">
+                        <label for="serviceName" class="form-label">Service Name</label>
+                        <input type="text" class="form-control" id="serviceName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="serviceDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="serviceDescription" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="serviceCategory" class="form-label">Category</label>
+                        <select class="form-select" id="serviceCategory" required>
+                            <option value="">Select category</option>
+                            <option value="website">Website</option>
+                            <option value="api">API</option>
+                            <option value="database">Database</option>
+                            <option value="infrastructure">Infrastructure</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="serviceIcon" class="form-label">Icon</label>
+                        <select class="form-select" id="serviceIcon">
+                            <option value="">Select icon</option>
+                            <option value="fas fa-globe">Globe</option>
+                            <option value="fas fa-server">Server</option>
+                            <option value="fas fa-database">Database</option>
+                            <option value="fas fa-cloud">Cloud</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="serviceTeam" class="form-label">Team</label>
+                        <select class="form-select" id="serviceTeam" required>
+                            <option value="">Select team</option>
+                            <% teams.forEach(team => { %>
+                                <option value="<%= team._id %>"><%= team.name %></option>
+                            <% }) %>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="saveService">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12 mb-3">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addServiceModal">
+            <i class="fas fa-plus"></i> Add Service
+        </button>
+    </div>
+
+    <!-- Services Grid -->
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Services</h5>
+            </div>
+            <div class="card-body">
+                <div class="row" id="servicesGrid">
+                    <% services.forEach(service => { %>
+                        <div class="col-md-4 mb-4">
+                            <div class="card status-card status-<%= service.status %>" data-service-id="<%= service._id %>">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <% if (service.icon) { %>
+                                            <i class="<%= service.icon %> me-2"></i>
+                                        <% } %>
+                                        <h5 class="card-title mb-0"><%= service.name %></h5>
+                                    </div>
+                                    <p class="card-text text-muted"><%= service.description || 'No description' %></p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="badge bg-secondary">
+                                            <%= service.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) %>
+                                        </div>
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-outline-primary" onclick="editService('<%= service._id %>')">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteService('<%= service._id %>')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <% }) %>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Add service
+const addServiceForm = document.getElementById('addServiceForm');
+document.getElementById('saveService').addEventListener('click', async () => {
+    const formData = new FormData(addServiceForm);
+    const data = Object.fromEntries(formData);
+    
+    try {
+        const response = await fetch('/api/services', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer <%= user.token %>'
+            },
+            body: JSON.stringify(data),
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            document.getElementById('successMessage').textContent = 'Service added successfully!';
+            document.getElementById('successAlert').classList.remove('d-none');
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            document.getElementById('errorMessage').textContent = result.message || 'Failed to add service';
+            document.getElementById('errorAlert').classList.remove('d-none');
+        }
+    } catch (error) {
+        document.getElementById('errorMessage').textContent = 'An error occurred. Please try again.';
+        document.getElementById('errorAlert').classList.remove('d-none');
+    }
+});
+
+// Update service status
+async function updateServiceStatus(serviceId, status) {
+    try {
+        const response = await fetch(`/api/services/${serviceId}/status`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer <%= user.token %>'
+            },
+            body: JSON.stringify({ status }),
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            const serviceCard = document.querySelector(`.card[data-service-id="${serviceId}"]`);
+            serviceCard.classList.remove('status-operational', 'status-degraded_performance', 'status-partial_outage', 'status-major_outage');
+            serviceCard.classList.add(`status-${status}`);
+            
+            const statusBadge = serviceCard.querySelector('.badge');
+            statusBadge.textContent = status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
+    } catch (error) {
+        console.error('Error updating status:', error);
+    }
+}
+
+// Real-time updates
+const socket = io();
+
+socket.on('statusUpdate', (data) => {
+    updateServiceStatus(data.serviceId, data.status);
+});
+</script>
